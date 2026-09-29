@@ -18,9 +18,9 @@
 - **本地出题**：自建题库可增删改；优先随机抽取题库，否则根据典型题型生成回忆提示。显示参考答案后自评，不假装 AI 判分。
 - **学习地图**：SVG 节点、前置箭头、相关虚线，点击节点回到正文；无向相关关系与有向前置依赖分别保存。
 - **复习计划**：到期队列、全部计划、课程筛选。不会/模糊 1 天，理解 3 天，自测正确 7 天；加入复习立即到期。
-- **课程资料**：PPT、PDF、教材、网页、视频、老师笔记、往年题的名称/链接/备注；本地 Markdown/TXT 导入与阅读（每个 ≤ 1 MB），导入内容作为纯文本保存和显示。
+- **课程资料**：以本地文件选择/拖拽为主，自动识别类型，保存原文件并提取正文；显示处理进度、Mock 摘要、结构与三级学习建议，知识点直接进入知识树。在线链接保留为次要入口。
 - **统计**：各课程知识点、掌握、薄弱、到期复习、本周学习次数和最近七天柱状图。
-- **本地数据**：自动保存，刷新保留；JSON 完整备份/恢复；版本与引用校验；损坏数据恢复入口；保存失败明确提示。
+- **本地数据**：自动保存，刷新保留；JSON 学习数据备份/恢复（不含原文件）；版本与引用校验；损坏数据恢复入口；保存失败明确提示。
 - **体验**：浅色/深色模式、手机/平板布局、键盘可操作表单和原生模态对话框。
 
 首次启动附带五门示例课程，其中“激光原理”有四个示例知识点和一道题，不预填虚假的学习历史。可以直接编辑，也可以在设置中清空后从头使用。
@@ -93,16 +93,16 @@ npm run test:e2e
 
 ## 技术栈与目录
 
-React 19 + TypeScript 5 + Vite 8 + 原生 CSS。CSS 变量负责主题、CSS Grid 负责布局。初期使用原生 CSS，省去 Tailwind 配置和工具类层；运行依赖仅 React 与 React DOM。
+React 19 + TypeScript 5 + Vite 8 + 原生 CSS。CSS 变量负责主题、CSS Grid 负责布局。初期使用原生 CSS，省去 Tailwind 配置和工具类层；运行依赖为 React、React DOM，以及按需加载的 pdfjs-dist（PDF 文字提取）和 fflate（Office ZIP 解压）。
 
 ```text
 src/
   domain/       数据类型、树与依赖规则、学习事件、校验、示例数据
-  services/     本地存储接口、QuestionProvider 与 Mock
+  services/     本地存储、IndexedDB 附件、文本提取、分析 Provider、出题 Provider
   components/   知识树、地图、学习助手、对话框、图标和共享组件
   pages/        课程首页、工作台、资料、复习、统计、设置
   App.tsx       哈希路由与应用导航
-  main.tsx      注入 QuestionProvider
+  main.tsx      注入 QuestionProvider 与 MaterialAnalysisProvider
   styles.css    主题与响应式样式
 tests/          单元测试与生产子路径浏览器测试
 docs/           调研、编码前设计和验证记录
@@ -123,7 +123,7 @@ docs/           调研、编码前设计和验证记录
 
 `DataRepository` 当前由 `LocalRepository` 实现。存储键含路径，避免同域不同 Pages 项目混用数据；编辑先写入存储，成功才更新页面状态。相邻标签页通过 storage 事件更新，revision 检查会拒绝已检测到的过期写入。
 
-localStorage 配额由浏览器决定，适合少量课程文本；大量导入可能触及上限，会显示错误。日常使用建议单标签页编辑，MVP 不提供多标签同时写入的事务保证。未来可换为 IndexedDB / Dexie 和异步 repository。清除站点数据或隐私模式结束可能丢失本地记录，所以提供完整备份。导入备份目前为替换，不做合并。
+localStorage 配额由浏览器决定，适合少量课程文本；大量导入可能触及上限，会显示错误。日常使用建议单标签页编辑，MVP 不提供多标签同时写入的事务保证。原文件已使用 IndexedDB；未来可将文本快照也迁入 IndexedDB。清除站点数据或隐私模式结束可能丢失本地记录，所以提供 JSON 学习数据备份与原文件单独下载。JSON 不含二进制附件，换浏览器恢复时会提示缺少原文件。导入备份目前为替换，不做合并。
 
 ### 出题接口
 
@@ -139,10 +139,10 @@ interface QuestionProvider {
 
 ## 路线图
 
-1. IndexedDB、数据迁移、大容量资料、备份合并。
+1. 全量 IndexedDB 迁移、附件打包备份、大容量资料与备份合并。
 2. 更完整的复习调度（评估 ts-fsrs）、练习证据与自评信心分开记录。
 3. Markdown/LaTeX 排版、知识点关联资料、可导出学习档案。
-4. AI 知识树草案与题目草案：先预览校验，再由用户采用。
+4. 接入受控 Serverless 文本分析 API，将 Mock 替换为真实 AI；随后增加 OCR、旧 Office 转换、资料问答和逐页讲解。
 5. 需要时再增加安全后端、可选同步与账号。
 
 不在 MVP 范围：社交、支付、多人协作、复杂 Agent、PDF OCR、向量数据库、RAG、后台管理。
@@ -152,3 +152,32 @@ interface QuestionProvider {
 - [GitHub 开源调研](docs/github-research.md)
 - [编码前产品与数据设计](docs/product-design.md)
 - [验证记录与已知边界](docs/verification.md)
+
+## 课程资料：真实能力与边界
+
+支持 PDF、PPT、PPTX、DOC、DOCX、TXT、MD、PNG、JPG、JPEG 文件选择与拖放，单个 ≤ 20 MB。资料名称默认使用文件名，类型自动识别。上传指保存到当前浏览器，当前不会发送给云端或模型服务。
+
+| 格式             | 当前真实可用                                    | 尚未实现                     |
+| ---------------- | ----------------------------------------------- | ---------------------------- |
+| TXT / MD         | UTF-8 / UTF-16 / GB18030 解码、按标题与长度分段 | 语义理解                     |
+| PDF              | PDF.js 文字层提取，保留页码；最多 300 页        | 扫描件 OCR、公式和图表理解   |
+| PPTX             | 根据实际幻灯片顺序提取正文，保留页码            | 图片、公式对象、讲者备注解析 |
+| DOCX             | 正文段落提取，来源不伪造页码                    | 完整版式、嵌入图片和公式识别 |
+| PPT / DOC        | 原文件持久保存与下载                            | 旧版二进制格式转换           |
+| PNG / JPG / JPEG | 原文件保存、预览、下载                          | OCR                          |
+
+摘要、知识点拆分与重要程度均由 **MockMaterialAnalysisProvider** 生成规则草案，界面持续标注 Mock。有正文时使用真实正文节选；没有正文时只生成“待识别内容（Mock 示例）”，不虚构知识或页码。最多分析前 40 个片段、提取最多 200,000 字符，截断会提示。
+
+生成节点保留 id/title/summary/status/source/learningPriority，直接复用知识树、笔记、现有 Mock 自测、复习与统计。为了兼容旧版本，节点 importance 仍为 3/2/1；learningPriority 对应 must/understand/optional。用户在工作台调整重要程度时两者同步。删除资料保留已有知识点与历史；删除课程同时清理其资料原件。
+
+JSON 备份不包含 IndexedDB 原文件，请单独下载原件。所有数据仍受浏览器配额、清理站点数据和隐私模式影响。无法写入时会显示错误，不伪装处理成功。
+
+### 如何接入真正的 AI
+
+1. 在 Cloudflare Workers 或 Vercel Functions 部署文本分析 endpoint，服务商密钥只存服务端 Secret。
+2. 加入访问验证、限流、预算、请求长度限制、CORS 和结构化输出校验；不要只靠 CORS 保护额度。
+3. 按 [资料解析架构与接口契约](docs/material-ingestion.md) 实现请求/响应，保留真实来源页码。
+4. 在 src/main.tsx 将 MockMaterialAnalysisProvider 替换为 HttpMaterialAnalysisProvider，注入公开的 HTTPS endpoint。当前接口通过凭证请求，但访问保护需要随 Serverless 服务一起实现。
+5. 使用真实课件校对结果，再增加 OCR/旧 Office 转换及资料问答、逐页讲解、笔记与题目生成。
+
+GitHub Pages 仅发布静态前端，可以运行浏览器解析与 IndexedDB；无法运行服务端模型调用、存放私密 API Key 或同步用户文件。本次没有部署收费 AI 服务，也没有把 API Key 放入代码。

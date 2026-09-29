@@ -9,6 +9,58 @@ const obj = (v: unknown): Obj =>
 const str = (v: unknown): v is string => typeof v === 'string';
 const date = (v: unknown) => str(v) && Number.isFinite(Date.parse(v));
 const text = (v: Obj, names: string[]) => names.every((k) => str(v[k]));
+const pageNumber = (v: unknown) => v === null || (Number.isInteger(v) && Number(v) > 0);
+const stringList = (v: unknown) => Array.isArray(v) && v.every(str);
+function validateMaterialFields(r: Obj) {
+  if (r.file !== undefined) {
+    const f = obj(r.file);
+    if (
+      !text(f, ['name', 'mime']) ||
+      !Number.isFinite(f.size) ||
+      Number(f.size) <= 0 ||
+      !Number.isFinite(f.lastModified)
+    )
+      fail();
+  }
+  if (r.processing !== undefined) {
+    const p = obj(r.processing);
+    if (
+      !['processing', 'ready', 'error'].includes(String(p.status)) ||
+      !['read', 'extract', 'structure', 'knowledge', 'complete'].includes(String(p.stage)) ||
+      (p.error !== undefined && !str(p.error))
+    )
+      fail();
+  }
+  if (r.extraction !== undefined) {
+    const e = obj(r.extraction);
+    if (
+      !['text', 'pdf', 'office', 'unavailable'].includes(String(e.method)) ||
+      !stringList(e.warnings) ||
+      !Array.isArray(e.pages)
+    )
+      fail();
+    for (const value of e.pages as unknown[]) {
+      const p = obj(value);
+      if (!text(p, ['section', 'title', 'text']) || !pageNumber(p.page)) fail();
+    }
+  }
+  if (r.analysis !== undefined) {
+    const a = obj(r.analysis);
+    if (
+      !['mock', 'ai'].includes(String(a.mode)) ||
+      !str(a.summary) ||
+      !date(a.analyzedAt) ||
+      !stringList(a.warnings) ||
+      !stringList(a.knowledgePointIds) ||
+      !Array.isArray(a.sections)
+    )
+      fail();
+    for (const value of a.sections as unknown[]) {
+      const s = obj(value);
+      if (!text(s, ['id', 'title']) || !pageNumber(s.page)) fail();
+    }
+  }
+}
 export function validateData(input: unknown): AppData {
   const d = obj(input);
   if (d.schemaVersion !== 1 || !Number.isSafeInteger(d.revision) || Number(d.revision) < 0) fail();
@@ -47,6 +99,18 @@ export function validateData(input: unknown): AppData {
     )
       fail();
     setParent(data, n.id, n.parentId);
+    if (
+      (n.summary !== undefined && !str(n.summary)) ||
+      (n.learningPriority !== undefined &&
+        !['must', 'understand', 'optional'].includes(n.learningPriority)) ||
+      (n.generatedBy !== undefined && !['mock', 'ai'].includes(n.generatedBy))
+    )
+      fail();
+    if (
+      n.source !== undefined &&
+      (!text(obj(n.source), ['fileId', 'fileName', 'section']) || !pageNumber(n.source.page))
+    )
+      fail();
   }
   let check: AppData = { ...data, edges: [] };
   for (const e of data.edges) {
@@ -66,7 +130,7 @@ export function validateData(input: unknown): AppData {
       !data.nodes.some((n) => n.id === q.nodeId && n.kind === 'topic')
     )
       fail();
-  for (const r of data.resources)
+  for (const r of data.resources) {
     if (
       !text(obj(r), ['courseId', 'name', 'url', 'notes']) ||
       !r.name.trim() ||
@@ -77,6 +141,8 @@ export function validateData(input: unknown): AppData {
       (r.url && !safeUrl(r.url))
     )
       fail();
+    validateMaterialFields(obj(r));
+  }
   // Historical events intentionally survive course/node deletion.
   for (const e of data.events)
     if (

@@ -76,7 +76,7 @@ export function Settings({
             }
           >
             <Icon name="download" size={16} />
-            导出完整备份
+            导出学习数据
           </button>
           <button className="button" onClick={() => file.current?.click()}>
             <Icon name="upload" size={16} />
@@ -99,7 +99,8 @@ export function Settings({
           </p>
         )}
         <p className="muted">
-          备份包含课程、笔记、题库、资料文本、关系与全部学习记录。请定期下载，尤其在清理浏览器前。
+          JSON 备份包含课程、笔记、题库、资料提取文本、知识点、关系与全部学习记录，不包含 IndexedDB
+          中的原文件。原文件请在资料详情中单独下载。请在清理浏览器前备份。
         </p>
       </section>
       <section className="settings-section">

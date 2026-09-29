@@ -4,6 +4,7 @@ import { isDue, record } from './domain/logic';
 import { validateData } from './domain/validation';
 import { download, storageKey, useData } from './services/storage';
 import type { QuestionProvider } from './services/questions';
+import type { MaterialAnalysisProvider } from './services/materialAnalysis';
 import { Dashboard } from './pages/Dashboard';
 import { Workspace } from './pages/Workspace';
 import { Review } from './pages/Review';
@@ -11,7 +12,13 @@ import { Stats } from './pages/Stats';
 import { Settings } from './pages/Settings';
 import { Icon } from './components/Icons';
 import { Empty } from './components/Modal';
-export default function App({ questionProvider }: { questionProvider: QuestionProvider }) {
+export default function App({
+  questionProvider,
+  materialProvider,
+}: {
+  questionProvider: QuestionProvider;
+  materialProvider: MaterialAnalysisProvider;
+}) {
   const { data, update, replace, error, setError, savedAt } = useData();
   const [path, setPath] = useState(location.hash.slice(1) || '/');
   const lastOpenedPath = useRef('');
@@ -216,6 +223,7 @@ export default function App({ questionProvider }: { questionProvider: QuestionPr
             go={go}
             navigate={navigate}
             provider={questionProvider}
+            materialProvider={materialProvider}
           />
         ) : path === '/' ? (
           <Dashboard data={data} update={update} go={go} navigate={navigate} />

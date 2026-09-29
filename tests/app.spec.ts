@@ -84,39 +84,10 @@ test('地图导航、前置循环拒绝与同级拖动', async ({ page }) => {
   await page.reload();
   await expect(page.locator('.tree-row.topic .tree-node').last()).toHaveText('ABCD 矩阵');
 });
-test('资料链接与 Markdown 安全导入、编辑和删除', async ({ page }) => {
-  await page.goto('./#/course/laser');
-  await page.getByRole('button', { name: '课程资料', exact: true }).click();
-  await page.locator('.resources-page input[type=file]').setInputFiles({
-    name: '课堂.md',
-    mimeType: 'text/markdown',
-    buffer: Buffer.from('# 光学\n<script>alert("unsafe")</script>\n我的课堂笔记'),
-  });
-  await page.getByRole('button', { name: '阅读导入文本 →' }).click();
-  await expect(page.locator('.imported-text')).toContainText('<script>');
-  await page.getByRole('button', { name: '关闭', exact: true }).click();
-  await page.getByRole('button', { name: '添加资料', exact: true }).click();
-  await page.getByLabel('名称', { exact: true }).fill('教材');
-  await page.getByLabel('链接（可选）').fill('https://example.com/book');
-  await page.getByRole('button', { name: '保存资料' }).click();
-  await expect(page.getByRole('link', { name: '打开资料 ↗' })).toHaveAttribute(
-    'href',
-    'https://example.com/book',
-  );
-  await page.getByRole('button', { name: '编辑资料教材' }).click();
-  await page.getByLabel('备注').fill('第 2 章');
-  await page.getByRole('button', { name: '保存资料' }).click();
-  await page.reload();
-  await page.getByRole('button', { name: '课程资料', exact: true }).click();
-  await expect(page.locator('.resource-list')).toContainText('第 2 章');
-  page.on('dialog', (d) => d.accept());
-  await page.getByRole('button', { name: '删除资料教材' }).click();
-  await expect(page.getByRole('link', { name: '打开资料 ↗' })).toHaveCount(0);
-});
 test('完整备份往返、无效导入不破坏数据、主题保留', async ({ page }) => {
   await page.goto('./#/settings');
   const downloadEvent = page.waitForEvent('download');
-  await page.getByRole('button', { name: '导出完整备份' }).click();
+  await page.getByRole('button', { name: '导出学习数据' }).click();
   const download = await downloadEvent;
   expect(download.suggestedFilename()).toMatch(/learnflow-backup/);
   await page.locator('.settings-section input[type=file]').setInputFiles({

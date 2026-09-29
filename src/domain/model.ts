@@ -16,6 +16,39 @@ export const fields = {
   notes: '学习笔记',
 } as const;
 export type Content = Record<keyof typeof fields, string>;
+export type LearningPriority = 'must' | 'understand' | 'optional';
+export interface MaterialSource {
+  fileId: string;
+  fileName: string;
+  page: number | null;
+  section: string;
+}
+export interface MaterialPage {
+  page: number | null;
+  section: string;
+  title: string;
+  text: string;
+}
+export interface MaterialExtraction {
+  method: 'text' | 'pdf' | 'office' | 'unavailable';
+  pages: MaterialPage[];
+  warnings: string[];
+}
+export type ProcessingStage = 'read' | 'extract' | 'structure' | 'knowledge' | 'complete';
+export interface MaterialFile {
+  name: string;
+  size: number;
+  mime: string;
+  lastModified: number;
+}
+export interface MaterialAnalysis {
+  mode: 'mock' | 'ai';
+  summary: string;
+  sections: { id: string; title: string; page: number | null }[];
+  knowledgePointIds: string[];
+  warnings: string[];
+  analyzedAt: string;
+}
 export interface Course {
   id: string;
   title: string;
@@ -35,6 +68,10 @@ export interface KnowledgeNode {
   content: Content;
   reviewAt: string | null;
   updatedAt: string;
+  summary?: string;
+  learningPriority?: LearningPriority;
+  source?: MaterialSource;
+  generatedBy?: 'mock' | 'ai';
 }
 export interface Edge {
   id: string;
@@ -92,6 +129,12 @@ export const resourceTypes = [
   '往年题',
   'Markdown',
   'TXT',
+  'PPTX',
+  'DOC',
+  'DOCX',
+  'PNG',
+  'JPG',
+  'JPEG',
 ] as const;
 export interface Resource {
   id: string;
@@ -102,6 +145,10 @@ export interface Resource {
   notes: string;
   text?: string;
   createdAt: string;
+  file?: MaterialFile;
+  processing?: { status: 'processing' | 'ready' | 'error'; stage: ProcessingStage; error?: string };
+  extraction?: MaterialExtraction;
+  analysis?: MaterialAnalysis;
 }
 export interface AppData {
   schemaVersion: 1;

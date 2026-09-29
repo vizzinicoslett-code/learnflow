@@ -10,6 +10,7 @@ import {
 import { addEdge, deleteNodes, descendants, record } from '../domain/logic';
 import type { Update } from '../services/storage';
 import type { QuestionProvider } from '../services/questions';
+import type { MaterialAnalysisProvider } from '../services/materialAnalysis';
 import { KnowledgeTree, NodeForm } from '../components/KnowledgeTree';
 import { KnowledgeMap } from '../components/KnowledgeMap';
 import { AssistantPanel } from '../components/AssistantPanel';
@@ -25,6 +26,7 @@ export function Workspace({
   go,
   navigate,
   provider,
+  materialProvider,
 }: {
   course: Course;
   data: AppData;
@@ -33,6 +35,7 @@ export function Workspace({
   go: (n: KnowledgeNode) => void;
   navigate: (path: string) => void;
   provider: QuestionProvider;
+  materialProvider: MaterialAnalysisProvider;
 }) {
   const [tab, setTab] = useState('knowledge');
   const [editing, setEditing] = useState(false);
@@ -50,7 +53,23 @@ export function Workspace({
       update((d) => ({
         ...d,
         nodes: d.nodes.map((n) =>
-          n.id === selected.id ? { ...n, ...values, updatedAt: now() } : n,
+          n.id === selected.id
+            ? {
+                ...n,
+                ...values,
+                ...(values.importance && n.learningPriority
+                  ? {
+                      learningPriority: ({ 1: 'optional', 2: 'understand', 3: 'must' } as const)[
+                        values.importance
+                      ],
+                    }
+                  : {}),
+                ...(values.content && n.summary !== undefined
+                  ? { summary: values.content.concept }
+                  : {}),
+                updatedAt: now(),
+              }
+            : n,
         ),
       }));
   }
@@ -113,7 +132,13 @@ export function Workspace({
       {tab === 'map' ? (
         <KnowledgeMap data={data} courseId={course.id} select={select} />
       ) : tab === 'resources' ? (
-        <Resources data={data} courseId={course.id} update={update} />
+        <Resources
+          data={data}
+          courseId={course.id}
+          update={update}
+          provider={materialProvider}
+          select={select}
+        />
       ) : (
         <div className="workbench">
           <KnowledgeTree
@@ -162,6 +187,13 @@ export function Workspace({
                   </div>
                 </div>
                 <h1>{selected.title}</h1>
+                {selected.source && (
+                  <p className="muted">
+                    来源：{selected.source.fileName}
+                    {selected.source.page ? ` · 第 ${selected.source.page} 页` : ' · 正文片段'}
+                    {selected.generatedBy === 'mock' && ' · Mock 草案，请校对'}
+                  </p>
+                )}
                 {selected.kind === 'chapter' ? (
                   <>
                     <p className="muted">在这个章节下，一点点搭起完整的理解。</p>

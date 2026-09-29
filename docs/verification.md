@@ -56,3 +56,30 @@
 - 自测评分后持久化作答；未提交作答草稿不持久化。
 - 已测 Chromium，不声称已在真实 iOS Safari、Firefox 或所有平板设备验证。
 - 地图适合课程级小规模节点，超大图的布局/性能没有做压力测试。
+
+## 资料工作流重新验收（2026-09-29）
+
+本节替代早期“链接收藏 + 文本导入”的资料验收结论。
+
+- 主入口改为文件选择与拖放；文件名、类型、大小、删除和重选可用。
+- 原文件存 IndexedDB，解析结果与知识点存兼容的 v1 快照。原文件刷新后可下载。
+- TXT/MD、文字 PDF、PPTX、DOCX 真实提取；PNG/JPG 预览；PPT/DOC/图片无正文时明确使用待识别 Mock 示例。
+- 真正的 AI 摘要、AI 问答、逐页讲解、AI 生成笔记/题目尚未接入，不宣称已经完成。
+- 流程包含读取、提取、结构、知识点、完成，并支持取消和重试。失败不显示假成功。
+- PDF worker、中文 CMap 与基础字体从本站加载；构建前自动从 pdfjs-dist 复制资源，保留 License。
+- 学习建议与知识树引用同一节点，开始学习后复用掌握度、笔记、自测、复习和统计。
+- 资料/课程删除和数据替换会清理不再引用的原文件；删除资料保留已生成知识点。清理失败明确提示。
+
+单元测试增至 15 项：新增来源校验、优先级映射、重复提交保护、占位与取消、文件类型/大小、扩展备份格式校验。
+
+浏览器场景增至 17 项：保留原有课程/学习/地图/备份/多标签回归；新资料测试包含真实 Markdown、TXT、PPTX 幻灯片顺序、DOCX、PDF 文字层、下载持久化、拖放、重命名、旧在线链接、图片预览、损坏 PDF 重试、取消后恢复、配额失败、旧 PPT 占位及手机/深色显示。Office/PDF 使用可重复的合成文档，不代表已覆盖所有厂商和复杂版式。
+
+依赖检查：npm audit --omit=dev 返回 0 vulnerabilities。未接入外部 AI 网络调用；API Key 未出现在前端或仓库。
+
+新增/修改文件分组：
+
+- 界面：Resources.tsx、MaterialDetail.tsx、Workspace.tsx、Settings.tsx、styles.css。
+- 数据：model.ts、materials.ts、validation.ts、storage.ts。
+- 服务：materialFiles.ts、materialExtraction.ts、materialAnalysis.ts。
+- 入口/构建：App.tsx、main.tsx、vite-env.d.ts、package.json/lock、scripts/prepare-pdf-assets.mjs、.gitignore、.prettierignore。
+- 验收/文档：materials.test.ts、materials.spec.ts、app.spec.ts、README.md、material-ingestion.md、本文件。

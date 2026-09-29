@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AppData } from '../domain/model';
 import { validateData } from '../domain/validation';
 import { seedData } from '../domain/seed';
+import { materialFiles } from './materialFiles';
 export const storageKey = () =>
   `learnflow:v1:${window.location.pathname.replace(/index\.html$/, '')}`;
 export interface DataRepository {
@@ -44,6 +45,14 @@ export function useData() {
   const current = useRef(data);
   const [error, setError] = useState(initial.error);
   const [savedAt, setSavedAt] = useState('');
+  function cleanRemovedFiles(previous: AppData | null, next: AppData) {
+    const removed =
+      previous?.resources.filter((r) => r.file && !next.resources.some((n) => n.id === r.id)) ?? [];
+    if (removed.length)
+      void Promise.all(removed.map((resource) => materialFiles.remove(resource.id))).catch(() =>
+        setError('学习数据已保存，但被删除资料的原文件清理失败，请检查浏览器存储权限。'),
+      );
+  }
   function update(transform: (d: AppData) => AppData): boolean {
     try {
       if (!current.current) throw new Error('请先恢复本地数据。');
@@ -55,6 +64,7 @@ export function useData() {
       }
       const next = { ...transform(current.current), revision: current.current.revision + 1 };
       repository.current.save(next);
+      cleanRemovedFiles(current.current, next);
       current.current = next;
       setData(next);
       setError('');
@@ -70,6 +80,7 @@ export function useData() {
       validateData(next);
       next = { ...next, revision: (current.current?.revision ?? 0) + 1 };
       repository.current.save(next);
+      cleanRemovedFiles(current.current, next);
       current.current = next;
       setData(next);
       setError('');
