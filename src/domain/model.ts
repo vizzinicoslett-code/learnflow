@@ -33,6 +33,23 @@ export interface MaterialExtraction {
   method: 'text' | 'pdf' | 'office' | 'unavailable';
   pages: MaterialPage[];
   warnings: string[];
+  metadata?: DocumentMetadata;
+}
+export interface DocumentMetadata {
+  parserVersion: 2;
+  parser: string;
+  fileSize: number;
+  pageCount: number;
+  characters: number;
+  needsOCR: boolean;
+  ocrPages: number[];
+}
+export interface ParsedDocument extends MaterialExtraction {
+  title: string;
+  fileType: Resource['type'];
+  pages: (MaterialPage & { pageNumber: number | null })[];
+  fullText: string;
+  metadata: DocumentMetadata;
 }
 export type ProcessingStage = 'read' | 'extract' | 'structure' | 'knowledge' | 'complete';
 export interface MaterialFile {
@@ -42,6 +59,7 @@ export interface MaterialFile {
   lastModified: number;
 }
 export interface MaterialAnalysis {
+  parserVersion?: 2;
   mode: 'mock' | 'ai';
   summary: string;
   sections: { id: string; title: string; page: number | null }[];

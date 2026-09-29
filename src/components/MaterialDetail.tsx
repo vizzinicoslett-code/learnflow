@@ -46,7 +46,8 @@ export function MaterialDetail({
     };
   }, [r.id, r.file]);
   const points = data.nodes.filter((n) => r.analysis?.knowledgePointIds.includes(n.id));
-  const pages = r.extraction?.pages ?? [];
+  const verified = r.extraction?.metadata?.parserVersion === 2;
+  const pages = verified ? (r.extraction?.pages ?? []) : [];
   return (
     <article className="material-detail">
       <button className="text-button" onClick={back}>
@@ -71,7 +72,7 @@ export function MaterialDetail({
       {url && ['PNG', 'JPG', 'JPEG'].includes(r.type) && (
         <img className="material-image" src={url} alt={r.name} />
       )}
-      {r.analysis ? (
+      {r.analysis && verified && r.processing?.status !== 'error' ? (
         <>
           <div className="material-notice">
             <strong>
@@ -143,7 +144,10 @@ export function MaterialDetail({
         </>
       ) : (
         <p className="material-notice">
-          {r.processing?.error || '解析尚未完成，请返回资料列表重试。'}
+          {r.processing?.error ||
+            (!verified
+              ? '此资料使用旧解析结果，请返回资料列表点击“重新解析”，重新提取原文件正文。'
+              : r.extraction?.warnings.join(' ') || '未提取到正文，未生成摘要或知识点。')}
         </p>
       )}
       {!!pages.length && (
@@ -170,7 +174,7 @@ export function MaterialDetail({
           </pre>
         </section>
       )}
-      {r.text && <pre className="imported-text">{r.text}</pre>}
+      {r.text && <p className="muted">旧版导入文本尚未通过格式校验，请重新上传原始文件。</p>}
       <footer className="material-notice">
         <strong>接下来如何学习</strong>
         <p>点击知识点“开始学习”，即可编辑笔记、使用现有 Mock 自测、加入复习并更新掌握度。</p>

@@ -43,9 +43,32 @@ function validateMaterialFields(r: Obj) {
       const p = obj(value);
       if (!text(p, ['section', 'title', 'text']) || !pageNumber(p.page)) fail();
     }
+    if (e.metadata !== undefined) {
+      const m = obj(e.metadata);
+      if (
+        m.parserVersion !== 2 ||
+        !str(m.parser) ||
+        !Number.isSafeInteger(m.fileSize) ||
+        Number(m.fileSize) <= 0 ||
+        !Number.isSafeInteger(m.pageCount) ||
+        m.pageCount !== (e.pages as unknown[]).length ||
+        !Number.isSafeInteger(m.characters) ||
+        Number(m.characters) < 0 ||
+        typeof m.needsOCR !== 'boolean' ||
+        !Array.isArray(m.ocrPages) ||
+        !m.ocrPages.every((p) => Number.isInteger(p) && Number(p) > 0) ||
+        !text(e, ['title', 'fileType', 'fullText'])
+      )
+        fail();
+      for (const value of e.pages as unknown[]) {
+        const p = obj(value);
+        if (p.pageNumber !== p.page) fail();
+      }
+    }
   }
   if (r.analysis !== undefined) {
     const a = obj(r.analysis);
+    if (a.parserVersion !== undefined && a.parserVersion !== 2) fail();
     if (
       !['mock', 'ai'].includes(String(a.mode)) ||
       !str(a.summary) ||

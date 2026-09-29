@@ -83,3 +83,9 @@
 - 服务：materialFiles.ts、materialExtraction.ts、materialAnalysis.ts。
 - 入口/构建：App.tsx、main.tsx、vite-env.d.ts、package.json/lock、scripts/prepare-pdf-assets.mjs、.gitignore、.prettierignore。
 - 验收/文档：materials.test.ts、materials.spec.ts、app.spec.ts、README.md、material-ingestion.md、本文件。
+
+## 2026-09-30：DocumentParser 修复
+
+本节取代上一轮关于 GB18030 自动兜底与无正文占位知识点的结论。已取消两项行为。中文 PDF/PPTX/DOCX/MD 使用真实文件与对应库解析，空正文不分析，旧结果可重新解析。详见 [解析修复记录](document-parser-fix.md)。
+
+16 项单元测试通过；完整浏览器回归 21 项通过，随后新增旧乱码缓存修复与旧 Office 拒绝两个场景。专门的中文解析回归共 8 项，全部通过。生产构建通过，新增依赖审计无已知漏洞。

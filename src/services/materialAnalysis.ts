@@ -1,15 +1,17 @@
 import {
   uid,
   type LearningPriority,
-  type MaterialExtraction,
+  type ParsedDocument,
   type MaterialSource,
 } from '../domain/model';
 import { checkAborted, stage, type ProgressReporter } from './materialExtraction';
+import { assertParsedDocument } from './documentParser';
+import { assertCleanText } from './parsers/shared';
 
 export interface MaterialContext {
   fileId: string;
   fileName: string;
-  extraction: MaterialExtraction;
+  extraction: ParsedDocument;
 }
 export interface MaterialPoint {
   id: string;
@@ -39,18 +41,11 @@ export class MockMaterialAnalysisProvider implements MaterialAnalysisProvider {
     report: ProgressReporter,
     signal: AbortSignal,
   ): Promise<MaterialAnalysisResult> {
+    checkAborted(signal);
+    assertParsedDocument(context.extraction);
     await stage(report, 'structure', signal);
     const pages = context.extraction.pages.filter((p) => p.text.trim()).slice(0, 40);
-    const sourcePages = pages.length
-      ? pages
-      : [
-          {
-            section: 'unrecognized',
-            title: '待识别内容（Mock 示例）',
-            page: null,
-            text: '尚未提取到正文。请转换文件格式或接入 OCR 后再整理知识。此条仅用于体验学习流程。',
-          },
-        ];
+    const sourcePages = pages;
     const sections = sourcePages.map((p) => ({ id: p.section, title: p.title, page: p.page }));
     await stage(report, 'knowledge', signal);
     const points: MaterialPoint[] = sourcePages.map((p) => ({
@@ -74,12 +69,10 @@ export class MockMaterialAnalysisProvider implements MaterialAnalysisProvider {
       mode: 'mock',
       sections,
       points,
-      summary: pages.length
-        ? `规则草案：从正文提取了 ${pages.length} 个内容片段。以下为原文节选，尚未经过 AI 理解：\n${pages
-            .map((p) => p.text.slice(0, 180))
-            .join('\n')
-            .slice(0, 1800)}`
-        : '尚未读取到正文；当前仅提供明确标记的流程示例，不代表资料的实际内容。',
+      summary: `规则草案：从正文提取了 ${pages.length} 个内容片段。以下为原文节选，尚未经过 AI 理解：\n${pages
+        .map((p) => p.text.slice(0, 180))
+        .join('\n')
+        .slice(0, 1800)}`,
       warnings: [
         'Mock 规则分析，未调用 AI。标题来自正文，重要程度按关键词粗略分配，请对照原文校对。',
         ...(context.extraction.pages.length > 40
@@ -96,6 +89,7 @@ export function validateAnalysis(value: unknown, context: MaterialContext): Mate
     throw new Error('解析结果格式或来源引用无效，未写入知识树。');
   };
   if (!value || typeof value !== 'object') return bad();
+  assertParsedDocument(context.extraction);
   const v = value as MaterialAnalysisResult;
   const text = (s: unknown, max: number) =>
     typeof s === 'string' && s.length > 0 && s.length <= max;
@@ -111,6 +105,7 @@ export function validateAnalysis(value: unknown, context: MaterialContext): Mate
     v.warnings.some((w) => !text(w, 2000))
   )
     return bad();
+  assertCleanText(v.summary);
   const ids = new Set<string>();
   for (const s of v.sections) {
     if (
@@ -142,16 +137,9 @@ export function validateAnalysis(value: unknown, context: MaterialContext): Mate
     const real = context.extraction.pages.some(
       (s) => s.section === p.source.section && s.page === p.source.page,
     );
-    if (
-      !real &&
-      !(
-        v.mode === 'mock' &&
-        p.source.section === 'unrecognized' &&
-        p.source.page === null &&
-        !context.extraction.pages.some((s) => s.text.trim())
-      )
-    )
-      return bad();
+    if (!real) return bad();
+    assertCleanText(p.title);
+    assertCleanText(p.summary);
     ids.add(p.id);
   }
   return v;
@@ -163,6 +151,8 @@ export class HttpMaterialAnalysisProvider implements MaterialAnalysisProvider {
     if (new URL(endpoint).protocol !== 'https:') throw new Error('AI 接口必须使用 HTTPS。');
   }
   async analyze(context: MaterialContext, report: ProgressReporter, signal: AbortSignal) {
+    checkAborted(signal);
+    assertParsedDocument(context.extraction);
     await stage(report, 'structure', signal);
     const response = await fetch(this.endpoint, {
       method: 'POST',

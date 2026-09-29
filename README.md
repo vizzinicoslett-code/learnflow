@@ -93,7 +93,7 @@ npm run test:e2e
 
 ## 技术栈与目录
 
-React 19 + TypeScript 5 + Vite 8 + 原生 CSS。CSS 变量负责主题、CSS Grid 负责布局。初期使用原生 CSS，省去 Tailwind 配置和工具类层；运行依赖为 React、React DOM，以及按需加载的 pdfjs-dist（PDF 文字提取）和 fflate（Office ZIP 解压）。
+React 19 + TypeScript 5 + Vite 8 + 原生 CSS。CSS 变量负责主题、CSS Grid 负责布局。初期使用原生 CSS，省去 Tailwind 配置和工具类层；运行依赖为 React、React DOM，以及按需加载的 pdfjs-dist（PDF 文字提取）、fflate（PPTX ZIP 解压）和 mammoth（DOCX 纯文本提取）。
 
 ```text
 src/
@@ -159,14 +159,14 @@ interface QuestionProvider {
 
 | 格式             | 当前真实可用                                    | 尚未实现                     |
 | ---------------- | ----------------------------------------------- | ---------------------------- |
-| TXT / MD         | UTF-8 / UTF-16 / GB18030 解码、按标题与长度分段 | 语义理解                     |
+| TXT / MD         | 严格 UTF-8 解码、文件签名检查、按标题与长度分段 | 语义理解                     |
 | PDF              | PDF.js 文字层提取，保留页码；最多 300 页        | 扫描件 OCR、公式和图表理解   |
 | PPTX             | 根据实际幻灯片顺序提取正文，保留页码            | 图片、公式对象、讲者备注解析 |
-| DOCX             | 正文段落提取，来源不伪造页码                    | 完整版式、嵌入图片和公式识别 |
+| DOCX             | Mammoth 纯文本提取，来源不伪造页码              | 完整版式、嵌入图片和公式识别 |
 | PPT / DOC        | 原文件持久保存与下载                            | 旧版二进制格式转换           |
 | PNG / JPG / JPEG | 原文件保存、预览、下载                          | OCR                          |
 
-摘要、知识点拆分与重要程度均由 **MockMaterialAnalysisProvider** 生成规则草案，界面持续标注 Mock。有正文时使用真实正文节选；没有正文时只生成“待识别内容（Mock 示例）”，不虚构知识或页码。最多分析前 40 个片段、提取最多 200,000 字符，截断会提示。
+摘要、知识点拆分与重要程度均由 **MockMaterialAnalysisProvider** 生成规则草案，界面持续标注 Mock。只对 DocumentParser 校验后的正文生成草案；没有正文时不生成摘要或知识点。扫描 PDF 与图片提示需要 OCR，旧 PPT/DOC 提示转换。文件签名不符或乱码内容会停止处理并显示原因。最多分析前 40 个片段、提取最多 200,000 字符，截断会提示。
 
 生成节点保留 id/title/summary/status/source/learningPriority，直接复用知识树、笔记、现有 Mock 自测、复习与统计。为了兼容旧版本，节点 importance 仍为 3/2/1；learningPriority 对应 must/understand/optional。用户在工作台调整重要程度时两者同步。删除资料保留已有知识点与历史；删除课程同时清理其资料原件。
 
@@ -181,3 +181,9 @@ JSON 备份不包含 IndexedDB 原文件，请单独下载原件。所有数据�
 5. 使用真实课件校对结果，再增加 OCR/旧 Office 转换及资料问答、逐页讲解、笔记与题目生成。
 
 GitHub Pages 仅发布静态前端，可以运行浏览器解析与 IndexedDB；无法运行服务端模型调用、存放私密 API Key 或同步用户文件。本次没有部署收费 AI 服务，也没有把 API Key 放入代码。
+
+## 文件解析修复
+
+当前使用统一 DocumentParser，各文件格式独立解析。开发控制台提供解析器、页数、字符数与前 500 字符预览；正式构建不输出原文日志。已有资料请点击“重新解析”更新旧结果。
+
+详见 [乱码排查、中文样本与验收](docs/document-parser-fix.md)。

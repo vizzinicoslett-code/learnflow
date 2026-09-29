@@ -12,12 +12,8 @@ import { safeUrl } from '../domain/validation';
 import type { Update } from '../services/storage';
 import type { MaterialAnalysisProvider } from '../services/materialAnalysis';
 import { materialFiles } from '../services/materialFiles';
-import {
-  acceptedFiles,
-  checkAborted,
-  extractMaterial,
-  identifyFile,
-} from '../services/materialExtraction';
+import { acceptedFiles, checkAborted, identifyFile } from '../services/materialExtraction';
+import { parseDocument } from '../services/documentParser';
 import { Icon } from '../components/Icons';
 import { Empty, Modal } from '../components/Modal';
 import { MaterialDetail, fileSize } from '../components/MaterialDetail';
@@ -51,6 +47,7 @@ export function Resources({
   const [progress, setProgress] = useState<ProcessingStage>('read');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -109,6 +106,7 @@ export function Resources({
     controller.current = abort;
     setBusy(true);
     setDone(false);
+    setNotice('');
     setError('');
     setProgress('read');
     const id = existing?.id ?? uid();
@@ -161,7 +159,29 @@ export function Resources({
         )
           throw new Error('无法保存解析进度，请重试。');
       };
-      const extraction = await extractMaterial(file, report, abort.signal);
+      const extraction = await parseDocument(file, report, abort.signal);
+      if (!extraction.metadata.characters) {
+        if (
+          !commit((d) => ({
+            ...d,
+            resources: d.resources.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    extraction,
+                    analysis: undefined,
+                    processing: { status: 'ready', stage: 'complete' },
+                  }
+                : r,
+            ),
+          }))
+        )
+          throw new Error('解析状态保存失败，请重试。');
+        setNotice(extraction.warnings.join(' '));
+        setProgress('complete');
+        setDone(true);
+        return;
+      }
       const result = await provider.analyze(
         { fileId: id, fileName: file.name, extraction },
         report,
@@ -277,15 +297,19 @@ export function Resources({
                     {r.file
                       ? fileSize(r.file.size) +
                         ' · ' +
-                        (r.analysis
-                          ? (r.analysis.mode === 'mock' ? 'Mock 草案 · ' : '') +
-                            r.analysis.knowledgePointIds.length +
-                            ' 个知识点'
-                          : busy && jobId === r.id
-                            ? stages[progress]
-                            : r.processing?.status === 'processing'
-                              ? '上次处理已中断，可重试'
-                              : '解析失败，可重试')
+                        (r.processing?.status === 'error'
+                          ? r.processing.error
+                          : r.extraction?.metadata?.characters === 0
+                            ? '等待 OCR · 未生成知识点'
+                            : r.analysis
+                              ? (r.analysis.mode === 'mock' ? 'Mock 草案 · ' : '') +
+                                r.analysis.knowledgePointIds.length +
+                                ' 个知识点'
+                              : busy && jobId === r.id
+                                ? stages[progress]
+                                : r.processing?.status === 'processing'
+                                  ? '上次处理已中断，可重试'
+                                  : '解析失败，可重试')
                       : r.notes || '在线资料'}
                   </p>
                   {r.url && safeUrl(r.url) && (
@@ -298,7 +322,7 @@ export function Resources({
                       查看资料 →
                     </button>
                   )}
-                  {r.file && !r.analysis && (
+                  {r.file && (
                     <button className="text-button" disabled={busy} onClick={() => void retry(r)}>
                       重新解析
                     </button>
@@ -429,26 +453,34 @@ export function Resources({
                 </label>
                 <p className="muted">
                   文字提取真实运行；摘要与知识整理当前使用 Mock。PPT / DOC 旧格式和图片尚需转换或
-                  OCR，会显示流程示例。
+                  OCR；没有正文时不会生成摘要或知识点。
                 </p>
               </>
             )}
             {(busy || done) && (
               <div aria-live="polite" className="processing">
-                <h3>{done ? '资料已整理，可以开始学习' : selected?.name}</h3>
+                <h3>
+                  {done
+                    ? notice
+                      ? '资料已保存，等待 OCR'
+                      : '资料已整理，可以开始学习'
+                    : selected?.name}
+                </h3>
                 <ol>
-                  {Object.entries(stages).map(([key, label], i) => (
-                    <li
-                      key={key}
-                      className={i <= Object.keys(stages).indexOf(progress) ? 'active' : ''}
-                    >
-                      {i < Object.keys(stages).indexOf(progress) ? '✓' : i + 1} · {label}
-                    </li>
-                  ))}
+                  {Object.entries(stages).map(([key, label], i) =>
+                    notice && (key === 'structure' || key === 'knowledge') ? null : (
+                      <li
+                        key={key}
+                        className={i <= Object.keys(stages).indexOf(progress) ? 'active' : ''}
+                      >
+                        {i < Object.keys(stages).indexOf(progress) ? '✓' : i + 1} · {label}
+                      </li>
+                    ),
+                  )}
                 </ol>
                 <p>
                   {done
-                    ? 'Mock 草案已加入知识树，请对照原文校对。'
+                    ? notice || 'Mock 草案已加入知识树，请对照原文校对。'
                     : '请保持此页面打开。取消或刷新后可从资料列表重新解析。'}
                 </p>
               </div>
