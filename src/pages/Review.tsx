@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppData, KnowledgeNode } from '../domain/model';
 import { isDue } from '../domain/logic';
+import { isStudyTopic } from '../domain/studyContent';
 import { Empty } from '../components/Modal';
 import { NodeRow } from '../components/Shared';
 import { Icon } from '../components/Icons';
@@ -8,7 +9,7 @@ export function Review({ data, go }: { data: AppData; go: (n: KnowledgeNode) => 
   const [all, setAll] = useState(false);
   const [course, setCourse] = useState('');
   const scheduled = data.nodes
-    .filter((n) => n.kind === 'topic' && n.reviewAt && (!course || n.courseId === course))
+    .filter((n) => isStudyTopic(n) && n.reviewAt && (!course || n.courseId === course))
     .sort((a, b) => a.reviewAt!.localeCompare(b.reviewAt!));
   const due = scheduled.filter(isDue);
   const shown = all ? scheduled : due;

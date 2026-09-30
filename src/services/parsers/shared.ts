@@ -14,8 +14,17 @@ export function assertCleanText(text: string): void {
       '检测到二进制内容、无效编码或替换字符，已停止生成摘要。请检查文件格式，文本文件请另存为 UTF-8。',
     );
   }
-  const broken = (text.match(/[\ue000-\uf8ff\u25a0\u25a1]/gu) ?? []).length;
-  if (broken >= 4 && broken / Math.max(text.trim().length, 1) > 0.08) {
+  // Broken PDF font maps can emit valid Unicode: blocks, trigrams and dotted circles.
+  // Count these specific placeholder glyphs, not ordinary mathematical symbols.
+  const visible = text.replace(/\s/gu, '');
+  const placeholders = (visible.match(/[\ue000-\uf8ff\u25a0\u25a1\u25cc\u2580-\u259f]/gu) ?? [])
+    .length;
+  const trigrams = (visible.match(/[\u2630-\u2637]/gu) ?? []).length;
+  const repeatedTrigram = /([\u2630-\u2637])\1{2,}/u.test(visible);
+  if (
+    (placeholders >= 4 && placeholders / Math.max(visible.length, 1) > 0.08) ||
+    (trigrams >= 8 && repeatedTrigram)
+  ) {
     throw new Error('提取正文包含大量无法识别的字形，可能缺少字体映射；请重新导出文件或使用 OCR。');
   }
 }

@@ -123,6 +123,7 @@ export function validateData(input: unknown): AppData {
     )
       fail();
     setParent(data, n.id, n.parentId);
+    if (n.contentIssue !== undefined && !str(n.contentIssue)) fail();
     if (
       (n.createdAt !== undefined && !date(n.createdAt)) ||
       (n.documentId !== undefined && (!str(n.documentId) || n.documentId !== n.source?.fileId))

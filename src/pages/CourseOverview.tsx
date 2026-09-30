@@ -2,6 +2,7 @@ import type { AppData, KnowledgeNode } from '../domain/model';
 import { courseKnowledgeBase } from '../domain/courseKnowledge';
 import { Badge, Progress } from '../components/Shared';
 import { Empty } from '../components/Modal';
+import { materialTextIssue } from '../domain/studyContent';
 export function CourseOverview({
   data,
   courseId,
@@ -15,6 +16,7 @@ export function CourseOverview({
 }) {
   const kb = courseKnowledgeBase(data, courseId);
   const p = kb.progress;
+  const affected = kb.documents.filter((document) => materialTextIssue(document));
   return (
     <section className="course-overview">
       <div className="eyebrow">从资料，到真正掌握</div>
@@ -49,6 +51,16 @@ export function CourseOverview({
             上传第一份资料
           </button>
         </Empty>
+      )}
+      {affected.length > 0 && (
+        <div className="material-notice" role="alert">
+          <strong>有 {affected.length} 份资料的提取文字无法可靠识别</strong>
+          <p>异常内容已停止推荐和计入进度。原文件、笔记和学习记录仍保留。</p>
+          <p>{affected.map((document) => document.name).join('、')}</p>
+          <button className="button" onClick={upload}>
+            查看资料并处理
+          </button>
+        </div>
       )}
       {p.total > 0 && p.mastered === p.total ? (
         <div className="material-notice">

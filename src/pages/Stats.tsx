@@ -1,8 +1,9 @@
 import type { AppData } from '../domain/model';
 import { isDue, isStudy, isWeak, sevenDays } from '../domain/logic';
 import { courseTopics, masteredPercent, Progress } from '../components/Shared';
+import { isStudyTopic } from '../domain/studyContent';
 export function Stats({ data }: { data: AppData }) {
-  const topics = data.nodes.filter((n) => n.kind === 'topic');
+  const topics = data.nodes.filter(isStudyTopic);
   const days = sevenDays(data);
   const max = Math.max(1, ...days.map((d) => d.count));
   const monday = new Date();

@@ -127,7 +127,7 @@ test('旧乱码摘要不会继续展示，重新解析原件后恢复干净正�
   await page.reload();
   await page.getByRole('button', { name: '课程资料', exact: true }).click();
   await page.getByRole('button', { name: '查看资料 →' }).click();
-  await expect(page.getByText(/此资料使用旧解析结果/)).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('检测到二进制内容');
   await expect(page.locator('.material-summary')).toHaveCount(0);
   await page.getByRole('button', { name: '← 返回课程资料' }).click();
   await page.getByRole('button', { name: '重新解析', exact: true }).click();

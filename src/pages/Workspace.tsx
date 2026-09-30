@@ -17,6 +17,7 @@ import { AssistantPanel } from '../components/AssistantPanel';
 import { Badge, courseTopics, masteredPercent, Progress } from '../components/Shared';
 import { Icon } from '../components/Icons';
 import { Resources } from './Resources';
+import { isStudyTopic, nodeTextIssue } from '../domain/studyContent';
 import { CourseOverview } from './CourseOverview';
 import { DocumentReader } from './DocumentReader';
 import {
@@ -64,6 +65,7 @@ export function Workspace({
   const nodes = courseTopics(data, course.id);
   const selected = data.nodes.find((n) => n.id === selectedId && n.courseId === course.id);
   const original = selected ? sourcePage(data, selected) : undefined;
+  const contentIssue = selected?.contentIssue ?? (selected && nodeTextIssue(selected));
   const percent = masteredPercent(nodes);
   function select(n: KnowledgeNode) {
     setQuizTrigger(0);
@@ -193,6 +195,37 @@ export function Workspace({
               select={select}
               upload={() => setTab('resources')}
             />
+          ) : contentIssue ? (
+            <main className="knowledge-document">
+              <h1>这个知识点的来源文字无法可靠识别</h1>
+              <p role="alert">{contentIssue}</p>
+              <p>原文件、笔记和掌握记录已保留，异常内容暂不参与学习推荐和进度计算。</p>
+              <button
+                className="button primary"
+                onClick={() =>
+                  navigate(
+                    selected.source
+                      ? documentRoute(course.id, selected.source.fileId)
+                      : `/course/${course.id}/resources`,
+                  )
+                }
+              >
+                查看原始资料
+              </button>
+              <section className="study-note">
+                <label>
+                  我的笔记
+                  <textarea
+                    aria-label="我的笔记"
+                    rows={5}
+                    value={selected.content.notes}
+                    onChange={(e) =>
+                      update((d) => saveNote(d, course.id, selected.id, e.target.value))
+                    }
+                  />
+                </label>
+              </section>
+            </main>
           ) : (
             <>
               <main className="knowledge-document">
@@ -253,7 +286,10 @@ export function Workspace({
                     <p className="muted">在这个章节下，一点点搭起完整的理解。</p>
                     <div className="chapter-list">
                       {data.nodes
-                        .filter((n) => n.parentId === selected.id)
+                        .filter(
+                          (n) =>
+                            n.parentId === selected.id && (n.kind === 'chapter' || isStudyTopic(n)),
+                        )
                         .sort((a, b) => a.order - b.order)
                         .map((n) => (
                           <button key={n.id} onClick={() => select(n)}>

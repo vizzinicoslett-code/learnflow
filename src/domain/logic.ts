@@ -1,4 +1,5 @@
 import { now, uid, type Action, type AppData, type KnowledgeNode, type Status } from './model';
+import { isStudyTopic } from './studyContent';
 
 export function descendants(nodes: KnowledgeNode[], id: string): Set<string> {
   const found = new Set([id]);
@@ -133,7 +134,7 @@ export function record(
   options: { status?: Status; answer?: string; questionPrompt?: string; at?: string } = {},
 ): AppData {
   const node = data.nodes.find((n) => n.id === nodeId);
-  if (!node || node.kind !== 'topic') return data;
+  if (!node || !isStudyTopic(node)) return data;
   const at = options.at ?? now();
   const transitions: Partial<Record<Action, Status>> = {
     understand: 'understood',
@@ -194,7 +195,7 @@ export function isWeak(data: AppData, node: KnowledgeNode): boolean {
 export const struggleCount = (data: AppData, id: string) =>
   data.events.filter((e) => e.nodeId === id && ['unknown', 'incorrect'].includes(e.action)).length;
 export const isDue = (n: KnowledgeNode) =>
-  n.kind === 'topic' && !!n.reviewAt && new Date(n.reviewAt).getTime() <= Date.now();
+  isStudyTopic(n) && !!n.reviewAt && new Date(n.reviewAt).getTime() <= Date.now();
 export const isStudy = (action: Action) => !['open', 'review'].includes(action);
 export const dayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -211,7 +212,7 @@ export function sevenDays(data: AppData) {
   });
 }
 export function nextNode(data: AppData): { node: KnowledgeNode; reason: string } | undefined {
-  const topics = data.nodes.filter((n) => n.kind === 'topic');
+  const topics = data.nodes.filter(isStudyTopic);
   const due = topics.filter(isDue).sort((a, b) => a.reviewAt!.localeCompare(b.reviewAt!))[0];
   if (due) return { node: due, reason: '已到复习时间，先试着回忆，再看笔记。' };
   const weak = topics.find((n) => isWeak(data, n));

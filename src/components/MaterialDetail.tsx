@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { statuses, type AppData, type KnowledgeNode, type Resource } from '../domain/model';
 import { materialFiles } from '../services/materialFiles';
+import { isStudyTopic, materialTextIssue } from '../domain/studyContent';
 export const fileSize = (n: number) =>
   n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(0.1, n / 1024).toFixed(1) + ' KB';
 export function MaterialDetail({
@@ -19,12 +20,14 @@ export function MaterialDetail({
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [page, setPage] = useState(0);
+  const [showOriginal, setShowOriginal] = useState(false);
   useEffect(() => {
     let active = true;
     let objectUrl = '';
     setUrl('');
     setError('');
     setPage(0);
+    setShowOriginal(false);
     if (r.file)
       void materialFiles
         .get(r.id)
@@ -47,9 +50,12 @@ export function MaterialDetail({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [r.id, r.file]);
-  const points = data.nodes.filter((n) => r.analysis?.knowledgePointIds.includes(n.id));
+  const points = data.nodes.filter(
+    (n) => isStudyTopic(n) && r.analysis?.knowledgePointIds.includes(n.id),
+  );
+  const qualityIssue = materialTextIssue(r);
   const verified = r.extraction?.metadata?.parserVersion === 2;
-  const pages = verified ? (r.extraction?.pages ?? []) : [];
+  const pages = verified && !qualityIssue ? (r.extraction?.pages ?? []) : [];
   return (
     <article className="material-detail">
       <button className="text-button" onClick={back}>
@@ -69,12 +75,24 @@ export function MaterialDetail({
           </a>
         )}
         {r.notes && <p>{r.notes}</p>}
+        {url && r.type === 'PDF' && (
+          <button className="button" onClick={() => setShowOriginal((show) => !show)}>
+            {showOriginal ? '收起原始 PDF' : '查看原始 PDF'}
+          </button>
+        )}
         {error && <p role="alert">{error}</p>}
       </header>
+      {showOriginal && url && r.type === 'PDF' && (
+        <iframe
+          title="原始 PDF"
+          src={url}
+          style={{ width: '100%', height: '70vh', border: '1px solid var(--line)' }}
+        />
+      )}
       {url && ['PNG', 'JPG', 'JPEG'].includes(r.type) && (
         <img className="material-image" src={url} alt={r.name} />
       )}
-      {r.analysis && verified && r.processing?.status !== 'error' ? (
+      {r.analysis && verified && !qualityIssue && r.processing?.status !== 'error' ? (
         <>
           <div className="material-notice">
             <strong>
@@ -152,11 +170,21 @@ export function MaterialDetail({
           </details>
         </>
       ) : (
-        <p className="material-notice">
-          {r.processing?.error ||
+        <p
+          className="material-notice"
+          role={qualityIssue || r.processing?.status === 'error' ? 'alert' : undefined}
+        >
+          {qualityIssue ||
+            r.processing?.error ||
             (!verified
               ? '此资料使用旧解析结果，请返回资料列表点击“重新解析”，重新提取原文件正文。'
               : r.extraction?.warnings.join(' ') || '未提取到正文，未生成摘要或知识点。')}
+        </p>
+      )}
+      {qualityIssue && (
+        <p>
+          提取出的字形无法还原为可靠正文，已停止生成和展示学习内容。请查看原件；可从源软件重新导出带文字层的
+          PDF，或提供 PPTX / DOCX。笔记和掌握记录会保留。重复解析同一个文件可能仍然失败。
         </p>
       )}
       {!!pages.length && (
@@ -189,13 +217,15 @@ export function MaterialDetail({
         </section>
       )}
       {r.text && <p className="muted">旧版导入文本尚未通过格式校验，请重新上传原始文件。</p>}
-      <footer className="material-notice">
-        <strong>接下来如何学习</strong>
-        <p>点击知识点“开始学习”，即可编辑笔记、使用现有 Mock 自测、加入复习并更新掌握度。</p>
-        <p className="muted">
-          资料级 AI 问答、AI 逐页讲解、AI 生成笔记与题目尚未接入。本页逐页阅读展示实际提取的正文。
-        </p>
-      </footer>
+      {!qualityIssue && points.length > 0 && (
+        <footer className="material-notice">
+          <strong>接下来如何学习</strong>
+          <p>点击知识点“开始学习”，即可编辑笔记、使用现有 Mock 自测、加入复习并更新掌握度。</p>
+          <p className="muted">
+            资料级 AI 问答、AI 逐页讲解、AI 生成笔记与题目尚未接入。本页逐页阅读展示实际提取的正文。
+          </p>
+        </footer>
+      )}
     </article>
   );
 }

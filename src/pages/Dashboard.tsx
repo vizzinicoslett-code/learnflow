@@ -14,6 +14,7 @@ import type { Update } from '../services/storage';
 import { Icon } from '../components/Icons';
 import { Empty, Modal } from '../components/Modal';
 import { courseTopics, masteredPercent, NodeRow, Progress } from '../components/Shared';
+import { isStudyTopic } from '../domain/studyContent';
 export function CourseForm({
   course,
   close,
@@ -97,7 +98,7 @@ export function Dashboard({
 }) {
   const [editing, setEditing] = useState<Course | 'new' | null>(null);
   const [query, setQuery] = useState('');
-  const topics = data.nodes.filter((n) => n.kind === 'topic');
+  const topics = data.nodes.filter(isStudyTopic);
   const weak = topics.filter((n) => isWeak(data, n));
   const due = topics.filter(isDue);
   const today = data.events.filter(

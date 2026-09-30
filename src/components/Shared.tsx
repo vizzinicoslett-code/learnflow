@@ -1,5 +1,6 @@
 import { statuses, type AppData, type KnowledgeNode, type Status } from '../domain/model';
 import { isWeak } from '../domain/logic';
+import { isStudyTopic } from '../domain/studyContent';
 import { Icon } from './Icons';
 export function Badge({ status }: { status: Status }) {
   return (
@@ -24,7 +25,7 @@ export function Progress({ value }: { value: number }) {
   );
 }
 export const courseTopics = (data: AppData, id: string) =>
-  data.nodes.filter((n) => n.courseId === id && n.kind === 'topic');
+  data.nodes.filter((n) => n.courseId === id && isStudyTopic(n));
 export const masteredPercent = (nodes: KnowledgeNode[]) =>
   nodes.length
     ? Math.round((nodes.filter((n) => n.status === 'mastered').length / nodes.length) * 100)

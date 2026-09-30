@@ -8,6 +8,7 @@ import {
 } from '../domain/courseKnowledge';
 import { Badge } from '../components/Shared';
 import { Empty } from '../components/Modal';
+import { textIssue, isStudyTopic } from '../domain/studyContent';
 export function DocumentReader({
   data,
   courseId,
@@ -50,10 +51,11 @@ export function DocumentReader({
       </Empty>
     );
   const index = pages.indexOf(current);
+  const qualityIssue = textIssue(current.text) ?? textIssue(current.title);
   const points = data.nodes.filter(
     (n) =>
       n.courseId === courseId &&
-      n.kind === 'topic' &&
+      isStudyTopic(n) &&
       n.source?.fileId === document.id &&
       n.source.section === current.section &&
       n.source.page === current.page,
@@ -88,9 +90,26 @@ export function DocumentReader({
       </aside>
       <main className="reader-content">
         <div className="eyebrow">{sourceLabel(document, current.page, index)}</div>
-        <h1>{current.title}</h1>
+        <h1>
+          {textIssue(current.title) ? sourceLabel(document, current.page, index) : current.title}
+        </h1>
         <p className="muted">来自《{document.name}》的提取正文</p>
-        <pre className="reader-text">{current.text || '本页没有可提取的文字，可能需要 OCR。'}</pre>
+        {qualityIssue ? (
+          <div className="material-notice" role="alert">
+            <strong>本页提取文字无法可靠识别</strong>
+            <p>{qualityIssue}</p>
+            <button
+              className="button"
+              onClick={() => navigate(documentRoute(courseId, document.id))}
+            >
+              查看原始资料
+            </button>
+          </div>
+        ) : (
+          <pre className="reader-text">
+            {current.text || '本页没有可提取的文字，可能需要 OCR。'}
+          </pre>
+        )}
         <div className="reader-pagination">
           <button
             className="button"

@@ -112,4 +112,14 @@ describe('资料解析与知识树', () => {
     });
     expect(() => validateData(data)).toThrow();
   });
+  it('截图中的错误字形映射会被拦截，正常公式和多语言不会被误判', () => {
+    const broken = 'љЗΨљ☰љ屡◌ ☰☰☰☰9 SOZN 41 Ĥ☰ = ☰ 6◌☰☰ + ☰ VSWR = ☰☰☰☰ tan ψ';
+    expect(() => assertCleanText(broken)).toThrow('无法识别的字形');
+    for (const text of [
+      '驻波比 VSWR = (1 + |Γ|) / (1 − |Γ|)，βl = π/2，Zin = Z₀²/ZL。',
+      'English Русский العربية Ελληνικά 中文，语言混排是有效文字。',
+      '八卦符号：☰ ☱ ☲ ☳ ☴ ☵ ☶ ☷。',
+    ])
+      expect(() => assertCleanText(text)).not.toThrow();
+  });
 });

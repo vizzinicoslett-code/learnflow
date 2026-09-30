@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { isStudyTopic, textIssue } from '../domain/studyContent';
 import { newNode, statuses, type AppData, type KnowledgeNode } from '../domain/model';
 import { descendants, reorder, setParent } from '../domain/logic';
 import type { Update } from '../services/storage';
@@ -136,6 +137,8 @@ export function KnowledgeTree({
     return siblings
       .filter((n) => !query || match.has(n.id))
       .map((n) => {
+        const blocked = n.kind === 'topic' && !isStudyTopic(n);
+        const label = blocked && textIssue(n.title) ? '待处理知识点' : n.title;
         const children = nodes.some((c) => c.parentId === n.id);
         const folded = !query && collapsed.has(n.id);
         return (
@@ -174,14 +177,17 @@ export function KnowledgeTree({
               <button
                 className="tree-node"
                 onClick={() => select(n)}
-                title={`${n.title} · ${statuses[n.status]}`}
+                title={`${label} · ${blocked ? '来源文字待处理' : statuses[n.status]}`}
               >
                 {n.kind === 'chapter' ? (
                   <Icon name="book" size={15} />
                 ) : (
                   <span className={`state-dot status-${n.status}`} />
                 )}
-                <span>{n.title}</span>
+                <span>
+                  {label}
+                  {blocked && <small className="muted"> · 待处理</small>}
+                </span>
               </button>
               <div className="tree-order">
                 <button

@@ -78,6 +78,7 @@ export interface Course {
   createdAt: string;
 }
 export interface KnowledgeNode {
+  contentIssue?: string;
   documentId?: string;
   createdAt?: string;
   id: string;

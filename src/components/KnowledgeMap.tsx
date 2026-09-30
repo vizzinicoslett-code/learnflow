@@ -3,6 +3,7 @@ import type { AppData, KnowledgeNode } from '../domain/model';
 import { Badge } from './Shared';
 import { Empty } from './Modal';
 import { priorityLabels, priorityOf } from '../domain/courseKnowledge';
+import { isStudyTopic } from '../domain/studyContent';
 export function KnowledgeMap({
   data,
   courseId,
@@ -12,8 +13,11 @@ export function KnowledgeMap({
   courseId: string;
   select: (n: KnowledgeNode) => void;
 }) {
-  const nodes = data.nodes.filter((n) => n.courseId === courseId && n.kind === 'topic');
-  const edges = data.edges.filter((e) => e.courseId === courseId);
+  const nodes = data.nodes.filter((n) => n.courseId === courseId && isStudyTopic(n));
+  const visibleIds = new Set(nodes.map((node) => node.id));
+  const edges = data.edges.filter(
+    (e) => e.courseId === courseId && visibleIds.has(e.sourceId) && visibleIds.has(e.targetId),
+  );
   const positions = useMemo(() => {
     const depth = new Map<string, number>();
     const visiting = new Set<string>();

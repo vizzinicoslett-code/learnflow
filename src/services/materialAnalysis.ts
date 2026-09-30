@@ -120,6 +120,7 @@ export function validateAnalysis(value: unknown, context: MaterialContext): Mate
     )
       return bad();
     ids.add(s.id);
+    assertCleanText(s.title);
   }
   ids.clear();
   for (const p of v.points) {

@@ -17,6 +17,7 @@ import { parseDocument } from '../services/documentParser';
 import { Icon } from '../components/Icons';
 import { Empty, Modal } from '../components/Modal';
 import { MaterialDetail, fileSize } from '../components/MaterialDetail';
+import { materialTextIssue } from '../domain/studyContent';
 const stages: Record<ProcessingStage, string> = {
   read: '正在读取文件',
   extract: '正在提取内容',
@@ -303,8 +304,8 @@ export function Resources({
                     {r.file
                       ? fileSize(r.file.size) +
                         ' · ' +
-                        (r.processing?.status === 'error'
-                          ? r.processing.error
+                        (materialTextIssue(r) || r.processing?.status === 'error'
+                          ? materialTextIssue(r) || r.processing?.error
                           : r.extraction?.metadata?.characters === 0
                             ? '等待 OCR · 未生成知识点'
                             : r.analysis

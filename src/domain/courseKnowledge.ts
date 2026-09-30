@@ -8,6 +8,7 @@ import {
   type Status,
 } from './model';
 import { dayKey, isStudy, nextNode } from './logic';
+import { isStudyTopic, nodeTextIssue, textIssue } from './studyContent';
 export interface KnowledgePoint {
   id: string;
   courseId: string;
@@ -36,8 +37,14 @@ export function migrateKnowledgeData(data: AppData): AppData {
     modelVersion: 2,
     nodes: data.nodes.map((n) => {
       const resource = data.resources.find((r) => r.id === n.source?.fileId);
+      const page = resource?.extraction?.pages.find(
+        (p) => p.section === n.source?.section && p.page === n.source.page,
+      );
+      const contentIssue =
+        nodeTextIssue(n) ?? (n.generatedBy && page ? textIssue(page.text) : undefined);
       return {
         ...n,
+        contentIssue,
         createdAt: n.createdAt ?? resource?.createdAt ?? n.updatedAt,
         ...(n.kind === 'topic' ? { learningPriority: priorityOf(n) } : {}),
         ...(n.source
@@ -78,7 +85,7 @@ export function knowledgePoint(data: AppData, n: KnowledgeNode): KnowledgePoint 
   };
 }
 export function courseProgress(nodes: KnowledgeNode[]) {
-  const topics = nodes.filter((n) => n.kind === 'topic');
+  const topics = nodes.filter(isStudyTopic);
   const mastered = topics.filter((n) => n.status === 'mastered').length;
   return {
     total: topics.length,
@@ -91,7 +98,7 @@ export function courseProgress(nodes: KnowledgeNode[]) {
   };
 }
 export function sourcePage(data: AppData, node: KnowledgeNode) {
-  if (!node.source) return undefined;
+  if (!node.source || !isStudyTopic(node)) return undefined;
   const document = data.resources.find(
     (r) => r.id === node.source!.fileId && r.courseId === node.courseId,
   );
@@ -117,7 +124,7 @@ export const readerRoute = (courseId: string, documentId: string, section: strin
   '/' +
   encodeURIComponent(section);
 export function courseKnowledgeBase(data: AppData, courseId: string) {
-  const nodes = data.nodes.filter((n) => n.courseId === courseId && n.kind === 'topic');
+  const nodes = data.nodes.filter((n) => n.courseId === courseId && isStudyTopic(n));
   const events = data.events.filter((e) => e.courseId === courseId);
   const documents = data.resources.filter((r) => r.courseId === courseId);
   const next = nextNode({
