@@ -8,11 +8,13 @@ export function MaterialDetail({
   data,
   select,
   back,
+  readSource,
 }: {
   resource: Resource;
   data: AppData;
   select: (node: KnowledgeNode) => void;
   back: () => void;
+  readSource: (section: string) => void;
 }) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
@@ -127,8 +129,15 @@ export function MaterialDetail({
             <ol>
               {r.analysis.sections.map((s) => (
                 <li key={s.id}>
-                  {s.title}
-                  {s.page !== null && <span className="muted"> · 第 {s.page} 页</span>}
+                  <button className="text-button" onClick={() => readSource(s.id)}>
+                    {s.title}
+                    {s.page !== null && (
+                      <span className="muted">
+                        {' · '}
+                        {r.type === 'PPTX' ? `Slide ${s.page}` : `第 ${s.page} 页`}
+                      </span>
+                    )}
+                  </button>
                 </li>
               ))}
             </ol>
@@ -172,6 +181,11 @@ export function MaterialDetail({
           <pre className="imported-text">
             {pages[page]?.text || '此页未提取到文字，可能需要 OCR。'}
           </pre>
+          {pages[page] && (
+            <button className="button" onClick={() => readSource(pages[page].section)}>
+              在来源阅读器中打开
+            </button>
+          )}
         </section>
       )}
       {r.text && <p className="muted">旧版导入文本尚未通过格式校验，请重新上传原始文件。</p>}

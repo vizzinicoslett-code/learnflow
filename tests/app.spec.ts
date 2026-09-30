@@ -58,6 +58,7 @@ test('学习闭环、自测、笔记、复习和统计', async ({ page }) => {
   await page.getByRole('button', { name: '学习地图', exact: true }).click();
   await page.getByRole('button', { name: '知识工作台', exact: true }).click();
   await expect(page.locator('.quiz')).toHaveCount(0);
+  await page.locator('.tree-node').filter({ hasText: 'ABCD 矩阵' }).click();
   await page.getByRole('button', { name: '笔记', exact: true }).click();
   await page.getByLabel('学习笔记', { exact: true }).fill('先传播，再折射，右侧先算。');
   await page.reload();

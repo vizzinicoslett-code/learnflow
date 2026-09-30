@@ -86,6 +86,7 @@ function validateMaterialFields(r: Obj) {
 }
 export function validateData(input: unknown): AppData {
   const d = obj(input);
+  if (d.modelVersion !== undefined && d.modelVersion !== 2) fail();
   if (d.schemaVersion !== 1 || !Number.isSafeInteger(d.revision) || Number(d.revision) < 0) fail();
   for (const key of ['courses', 'nodes', 'edges', 'resources', 'questions', 'events']) {
     if (!Array.isArray(d[key])) fail();
@@ -122,6 +123,18 @@ export function validateData(input: unknown): AppData {
     )
       fail();
     setParent(data, n.id, n.parentId);
+    if (
+      (n.createdAt !== undefined && !date(n.createdAt)) ||
+      (n.documentId !== undefined && (!str(n.documentId) || n.documentId !== n.source?.fileId))
+    )
+      fail();
+    if (
+      n.source &&
+      ((n.source.documentId !== undefined && n.source.documentId !== n.source.fileId) ||
+        (n.source.pageNumber !== undefined && n.source.pageNumber !== n.source.page) ||
+        (n.source.quote !== undefined && !str(n.source.quote)))
+    )
+      fail();
     if (
       (n.summary !== undefined && !str(n.summary)) ||
       (n.learningPriority !== undefined &&

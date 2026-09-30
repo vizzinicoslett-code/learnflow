@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AppData } from '../domain/model';
+import { emptyData, type AppData } from '../domain/model';
 import { validateData } from '../domain/validation';
-import { seedData } from '../domain/seed';
+import { migrateKnowledgeData } from '../domain/courseKnowledge';
 import { materialFiles } from './materialFiles';
 export const storageKey = () =>
   `learnflow:v1:${window.location.pathname.replace(/index\.html$/, '')}`;
@@ -12,7 +12,7 @@ export interface DataRepository {
 export class LocalRepository implements DataRepository {
   load() {
     const raw = localStorage.getItem(storageKey());
-    return raw === null ? null : validateData(JSON.parse(raw));
+    return raw === null ? null : migrateKnowledgeData(validateData(JSON.parse(raw)));
   }
   save(data: AppData) {
     localStorage.setItem(storageKey(), JSON.stringify(data));
@@ -31,7 +31,7 @@ export function useData() {
   const [initial] = useState(() => {
     try {
       const stored = repository.current.load();
-      const data = stored ?? seedData();
+      const data = stored ?? migrateKnowledgeData(emptyData());
       if (!stored) repository.current.save(data);
       return { data, error: '' };
     } catch {
@@ -62,7 +62,10 @@ export function useData() {
         setData(latest);
         throw new Error('另一个标签页更新了数据，已载入最新内容，请重新执行本次编辑。');
       }
-      const next = { ...transform(current.current), revision: current.current.revision + 1 };
+      const next = migrateKnowledgeData({
+        ...transform(current.current),
+        revision: current.current.revision + 1,
+      });
       repository.current.save(next);
       cleanRemovedFiles(current.current, next);
       current.current = next;
@@ -78,7 +81,7 @@ export function useData() {
   function replace(next: AppData) {
     try {
       validateData(next);
-      next = { ...next, revision: (current.current?.revision ?? 0) + 1 };
+      next = migrateKnowledgeData({ ...next, revision: (current.current?.revision ?? 0) + 1 });
       repository.current.save(next);
       cleanRemovedFiles(current.current, next);
       current.current = next;

@@ -30,19 +30,24 @@ export function Resources({
   update,
   provider,
   select,
+  detailId,
+  setDetailId,
+  readSource,
 }: {
   data: AppData;
   courseId: string;
   update: Update;
   provider: MaterialAnalysisProvider;
   select: (n: KnowledgeNode) => void;
+  detailId?: string;
+  setDetailId: (id: string | null) => void;
+  readSource: (documentId: string, section: string) => void;
 }) {
   const [upload, setUpload] = useState(false);
   const [editing, setEditing] = useState<Resource | 'new' | null>(null);
   const [selected, setSelected] = useState<File | null>(null);
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
-  const [detailId, setDetailId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProcessingStage>('read');
   const [busy, setBusy] = useState(false);
@@ -241,6 +246,7 @@ export function Resources({
           data={data}
           select={select}
           back={() => setDetailId(null)}
+          readSource={(section) => readSource(detail.id, section)}
         />
       ) : (
         <>

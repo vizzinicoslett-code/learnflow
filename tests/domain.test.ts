@@ -15,6 +15,7 @@ import {
 } from '../src/domain/logic';
 import { safeUrl, validateData } from '../src/domain/validation';
 import { MockQuestionProvider } from '../src/services/questions';
+import { courseKnowledgeBase, courseProgress, saveNote } from '../src/domain/courseKnowledge';
 describe('知识结构和历史', () => {
   it('仅修改名称或保存原父节点不改变排序', () => {
     const d = reorder(seedData(), 'laser-2', 'laser-0');
@@ -55,6 +56,32 @@ describe('知识结构和历史', () => {
   });
 });
 describe('学习事件和调度', () => {
+  it('状态、课程进度、学习地图节点与笔记共用同一份知识点数据', () => {
+    const initial = seedData();
+    expect(courseProgress(initial.nodes)).toMatchObject({ total: 4, mastered: 0, percent: 0 });
+    const learning = record(initial, 'laser-0', 'status', {
+      status: 'learning',
+      at: '2026-09-30T01:00:00.000Z',
+    });
+    const mastered = record(learning, 'laser-0', 'status', {
+      status: 'mastered',
+      at: '2026-09-30T02:00:00.000Z',
+    });
+    const noted = saveNote(mastered, 'laser', 'laser-0', '矩阵从右向左作用。');
+    expect(courseProgress(noted.nodes)).toMatchObject({
+      total: 4,
+      mastered: 1,
+      learning: 0,
+      percent: 25,
+    });
+    expect(
+      courseKnowledgeBase(noted, 'laser').nodes.find((node) => node.id === 'laser-0'),
+    ).toMatchObject({
+      status: 'mastered',
+      content: { notes: '矩阵从右向左作用。' },
+    });
+    expect(JSON.parse(JSON.stringify(noted)).nodes[1].content.notes).toBe('矩阵从右向左作用。');
+  });
   it('看懂只到基本理解；自测正确才到掌握并排七天', () => {
     let d = record(seedData(), 'laser-0', 'understand', { at: '2026-09-29T00:00:00Z' });
     expect(d.nodes[1].status).toBe('understood');

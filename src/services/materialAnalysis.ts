@@ -58,6 +58,9 @@ export class MockMaterialAnalysisProvider implements MaterialAnalysisProvider {
           ? 'must'
           : 'understand',
       source: {
+        documentId: context.fileId,
+        pageNumber: p.page,
+        quote: p.text.slice(0, 350),
         fileId: context.fileId,
         fileName: context.fileName,
         page: p.page,

@@ -13,11 +13,34 @@ export function attachMaterialAnalysis(
   validateAnalysis(result, { fileId: resourceId, fileName: resource.file.name, extraction });
   if (resource.analysis?.knowledgePointIds.join() === result.points.map((p) => p.id).join())
     return data;
-  if (result.points.some((p) => data.nodes.some((n) => n.id === p.id)))
-    throw new Error('知识点 ID 冲突，请重试。');
   const previousNodes = data.nodes.filter((n) =>
     resource.analysis?.knowledgePointIds.includes(n.id),
   );
+  const matchedIds = new Set<string>();
+  const normalize = (value: string) =>
+    value.normalize('NFKC').trim().replace(/\s+/g, '').toLowerCase();
+  const findPrevious = (point: MaterialAnalysisResult['points'][number]) => {
+    const available = previousNodes.filter((node) => !matchedIds.has(node.id));
+    const sameLocation = available.find(
+      (node) =>
+        node.source?.fileId === resourceId &&
+        node.source.section === point.source.section &&
+        node.source.page === point.source.page,
+    );
+    const sameTitleAndPage = available.find(
+      (node) =>
+        node.source?.fileId === resourceId &&
+        node.source.page === point.source.page &&
+        normalize(node.title) === normalize(point.title),
+    );
+    const sameTitle = available.find(
+      (node) =>
+        node.source?.fileId === resourceId && normalize(node.title) === normalize(point.title),
+    );
+    const matched = sameLocation ?? sameTitleAndPage ?? sameTitle;
+    if (matched) matchedIds.add(matched.id);
+    return matched;
+  };
   const oldRoot = data.nodes.find((n) => n.id === previousNodes[0]?.parentId);
   const root =
     oldRoot ??
@@ -29,9 +52,7 @@ export function attachMaterialAnalysis(
       data.nodes.filter((n) => n.courseId === resource.courseId && !n.parentId).length,
     );
   const nodes = result.points.map((p, i) => {
-    const old = previousNodes.find(
-      (n) => n.source?.section === p.source.section && n.source.page === p.source.page,
-    );
+    const old = findPrevious(p);
     if (old)
       return {
         ...old,
@@ -41,19 +62,24 @@ export function attachMaterialAnalysis(
             : old.title,
         summary: p.summary,
         source: p.source,
+        documentId: resourceId,
         generatedBy: result.mode,
+        learningPriority: p.importance,
+        importance: ({ must: 3, understand: 2, optional: 1 } as const)[p.importance],
         updatedAt: now(),
         content: {
           ...old.content,
           concept: old.content.concept === old.summary ? p.summary : old.content.concept,
         },
       };
+    if (data.nodes.some((node) => node.id === p.id)) throw new Error('知识点 ID 冲突，请重试。');
     return {
       ...newNode(resource.courseId, p.title, 'topic', root.id, i),
       id: p.id,
       summary: p.summary,
       learningPriority: p.importance,
       source: p.source,
+      documentId: resourceId,
       generatedBy: result.mode,
       importance: ({ must: 3, understand: 2, optional: 1 } as const)[p.importance],
       content: { ...emptyContent(), concept: p.summary },

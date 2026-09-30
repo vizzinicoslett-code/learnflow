@@ -111,7 +111,13 @@ export default function App({
         </div>
       </div>
     );
-  const parts = path.split('/');
+  const parts = path.split('/').map((p) => {
+    try {
+      return decodeURIComponent(p);
+    } catch {
+      return p;
+    }
+  });
   const course = parts[1] === 'course' ? data.courses.find((c) => c.id === parts[2]) : undefined;
   const reviewCount = data.nodes.filter(isDue).length;
   return (
@@ -220,6 +226,7 @@ export default function App({
             data={data}
             update={update}
             selectedId={parts[3]}
+            routeParts={parts.slice(4)}
             go={go}
             navigate={navigate}
             provider={questionProvider}

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { AppData, KnowledgeNode } from '../domain/model';
 import { Badge } from './Shared';
 import { Empty } from './Modal';
+import { priorityLabels, priorityOf } from '../domain/courseKnowledge';
 export function KnowledgeMap({
   data,
   courseId,
@@ -26,14 +27,22 @@ export function KnowledgeMap({
       depth.set(id, value);
       return value;
     }
+    const hasPrerequisites = edges.some((edge) => edge.kind === 'prerequisite');
     const rows = new Map<number, number>();
     return new Map(
-      nodes.map((n) => {
-        const col = level(n.id);
-        const row = rows.get(col) ?? 0;
-        rows.set(col, row + 1);
-        return [n.id, { x: 40 + col * 265, y: 60 + row * 140 }];
-      }),
+      [...nodes]
+        .sort((a, b) => {
+          const sourceOrder =
+            (a.source?.page ?? Number.MAX_SAFE_INTEGER) -
+            (b.source?.page ?? Number.MAX_SAFE_INTEGER);
+          return sourceOrder || a.order - b.order || a.title.localeCompare(b.title, 'zh-CN');
+        })
+        .map((n) => {
+          const col = hasPrerequisites ? level(n.id) : 3 - n.importance;
+          const row = rows.get(col) ?? 0;
+          rows.set(col, row + 1);
+          return [n.id, { x: 40 + col * 265, y: 60 + row * 140 }];
+        }),
     );
   }, [nodes, edges]);
   if (!nodes.length)
@@ -47,7 +56,7 @@ export function KnowledgeMap({
       <div className="section-heading">
         <div>
           <h2>让知识连接起来</h2>
-          <p>实线箭头：前置知识 → 后续知识　 ·　 虚线：相关知识</p>
+          <p>按学习优先级与资料顺序排列；连线只显示已保存的真实关系。</p>
         </div>
         <span className="muted">
           {nodes.length} 个节点 · {edges.length} 条连接
@@ -99,6 +108,7 @@ export function KnowledgeMap({
                 onClick={() => select(n)}
               >
                 <strong>{n.title}</strong>
+                <small className="muted">{priorityLabels[priorityOf(n)]}</small>
                 <Badge status={n.status} />
               </button>
             );
@@ -107,7 +117,7 @@ export function KnowledgeMap({
       </div>
       {!edges.length && (
         <p className="empty-inline">
-          在知识点页面设置“前置知识点”或“相关知识点”，这里就会出现连线。
+          当前没有可靠的前置关系，节点按“必须掌握 → 理解即可 → 补充内容”排列。
         </p>
       )}
       <details className="map-relations">

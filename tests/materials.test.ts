@@ -48,6 +48,8 @@ describe('资料解析与知识树', () => {
     expect(restored.nodes.at(-2)?.id).toBe(next.nodes.at(-2)?.id);
     expect(restored.nodes.at(-2)?.content.notes).toBe('我的笔记');
     expect(restored.nodes.at(-2)?.status).toBe('mastered');
+    expect(restored.nodes.at(-2)?.source?.fileId).toBe(c.fileId);
+    expect(restored.nodes.at(-2)?.source?.section).toBe(rerun.points[0].source.section);
     expect(() =>
       validateAnalysis(
         {

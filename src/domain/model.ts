@@ -18,6 +18,9 @@ export const fields = {
 export type Content = Record<keyof typeof fields, string>;
 export type LearningPriority = 'must' | 'understand' | 'optional';
 export interface MaterialSource {
+  documentId?: string;
+  pageNumber?: number | null;
+  quote?: string;
   fileId: string;
   fileName: string;
   page: number | null;
@@ -75,6 +78,8 @@ export interface Course {
   createdAt: string;
 }
 export interface KnowledgeNode {
+  documentId?: string;
+  createdAt?: string;
   id: string;
   courseId: string;
   parentId: string | null;
@@ -169,6 +174,7 @@ export interface Resource {
   analysis?: MaterialAnalysis;
 }
 export interface AppData {
+  modelVersion?: 2;
   schemaVersion: 1;
   revision: number;
   courses: Course[];
@@ -217,4 +223,5 @@ export const newNode = (
   content: emptyContent(),
   reviewAt: null,
   updatedAt: now(),
+  createdAt: now(),
 });
